@@ -1,37 +1,13 @@
-#include	"stdafx.h"
-#include	"Radio.h"
-
-d_list Radio::getdeviceList()
-{
-	U32			lidArray[16];
-	U32			itemReal;
-	BRD_Info	info = { sizeof(info) };
-	U32			ii;
-	d_list		devicesList;
-
-	BRD_lidList(lidArray, 16, &itemReal);
-	if (itemReal != 0)
-	{
-		for (ii = 0; ii < itemReal; ii++)
-		{
-			BRD_getInfo(lidArray[ii], &info);
-			devicesList[lidArray[ii]] = info;
-		}
-		return devicesList;
-	} else {
-		cout <<CURRFILE" ERROR: None Board" << endl << endl;
-		return devicesList;
-	}
-}
-Radio::Radio()
+#include		"stdafx.h"
+				Radio::Radio()
 {
 	BRD_displayMode(BRDdm_VISIBLE);
 }
-Radio::~Radio()
+				Radio::~Radio()
 {
 
 }
-boolean Radio::init()
+boolean			Radio::init()
 {
 	err = BRD_initEx(BRDinit_FILE_KNOWN, "brd.ini", "log.ini", &num);
 	if (0>err)
@@ -44,7 +20,7 @@ boolean Radio::init()
 	}
 	return true;
 }
-boolean Radio::openDevice(U32 g_lid)
+boolean			Radio::openDevice(S32 g_lid)
 {
 	if (deviceList.size() == 0) {
 		deviceList = this->getdeviceList();
@@ -53,8 +29,15 @@ boolean Radio::openDevice(U32 g_lid)
 		cout << CURRFILE" ERROR: Devices not found" << endl << endl;
 		return false;
 	}
+	if (g_lid < 0) {
+		g_lid	=	deviceList.begin()->first;
+	}
 	if (deviceList.count(g_lid) == 0) {
 		cout << CURRFILE" ERROR: There's not board with LID: " << g_lid << endl;
+		return false;
+	}
+	if (strcmp(deviceList.find(g_lid)->second.name,boardname) != 0) {
+		printf(CURRFILE" ERROR: This programm will working only with %s boards\n\n", boardname);
 		return false;
 	}
 	handle = BRD_open(g_lid, BRDopen_EXCLUSIVE, &openMode);
@@ -71,7 +54,7 @@ boolean Radio::openDevice(U32 g_lid)
 		);
 	return true;
 }
-void Radio::closeDevice()
+void			Radio::closeDevice()
 {
 	if (handle < 0) {
 		cout << CURRFILE"ERROR: There is not opened device" << endl;
@@ -85,18 +68,16 @@ void Radio::closeDevice()
 	}
 	cout << CURRFILE" INFO: Device closed successfuly" << endl;
 }
-BRD_PuList * Radio::getPuList()
+BRD_PuList *	Radio::getPuList(U32 * item)
 {
 	BRD_PuList		*paPuList;
-	U32				item;
 	int				isPuOK = 0;
-
 	//
 	// Get PU LIST
 	//
-	err = BRD_puList(handle, NULL, 0, &item);
-	paPuList = (BRD_PuList*)malloc(item * sizeof(BRD_PuList));
-	err = BRD_puList(handle, paPuList, item, &item);
+	err = BRD_puList(handle, NULL, 0, item);
+	paPuList = (BRD_PuList*)malloc(*item * sizeof(BRD_PuList));
+	err = BRD_puList(handle, paPuList, *item, item);
 	if (err<0)
 	{
 		cout << CURRFILE" ERROR: Device doesn't have Programmable Units" << endl << endl;
@@ -105,7 +86,54 @@ BRD_PuList * Radio::getPuList()
 	}
 	return paPuList;
 }
-int Radio::displayDevices()
+int				Radio::displayPuList()
+{
+	int ii;
+	if (puList == NULL) {
+		puList = this->getPuList(&puCout);
+	}
+	if (puList == NULL) {
+		cout << CURRFILE" ERROR: Device doesn't have Programmable Units" << endl << endl;
+		return puCout;
+	}
+	cout << endl << "---------Device PU LIST:-----------" << endl << endl;
+	for (ii = 0; ii<(int)puCout; ii++)
+	{
+		printf(" PuID=%3d Code=0x%04X Attr=0x%04X \"%s\"\n",
+			puList[ii].puId,
+			puList[ii].puCode,
+			puList[ii].puAttr,
+			puList[ii].puDescription);
+	}
+	return puCout;
+}
+d_list			Radio::getdeviceList()
+{
+	U32			lidArray[16];
+	U32			itemReal;
+	BRD_Info	info = { sizeof(info) };
+	U32			ii;
+	d_list		devicesList;
+
+	err		=	BRD_lidList(lidArray, 16, &itemReal);
+	if (err > 0) {
+
+	}
+	if (itemReal != 0)
+	{
+		for (ii = 0; ii < itemReal; ii++)
+		{
+			BRD_getInfo(lidArray[ii], &info);
+			devicesList[lidArray[ii]] = info;
+		}
+		return devicesList;
+	}
+	else {
+		cout << CURRFILE" ERROR: None Board" << endl << endl;
+		return devicesList;
+	}
+}
+int				Radio::displayDevices()
 {
 	if (deviceList.size() ==	0) {
 		deviceList = this->getdeviceList();
@@ -121,9 +149,71 @@ int Radio::displayDevices()
 	cout << endl << endl;
 	return deviceList.size();
 }
-boolean Radio::loadDSPProgramm(char * fileName)
+boolean			Radio::loadDSPProgramm(char * fileName)
 {
 	BRD_load(handle, g_nodeId, fileName, 0, NULL);
 	BRD_start(handle, g_nodeId);
 	return boolean();
+}
+boolean			Radio::getPLD(BRD_PuList * pld)
+{
+	int ii;
+	if (puList == NULL) {
+		puList = this->getPuList(&puCout);
+	}
+	if (puList == NULL) {
+		cout << CURRFILE" ERROR: Device doesn't have Programmable Units" << endl << endl;
+		return false;
+	}
+	for (ii = 0; ii < (int)puCout; ii++) {
+		if (puList[ii].puId == BRDpui_PLD) {
+			*pld = puList[ii];
+			break;
+		}
+	}
+	if (ii == puCout) {
+		cout << CURRFILE" ERROR: Device doesn't have PLD" << endl << endl;
+		return false;
+	}
+	return true;
+}
+boolean			Radio::getPuState(U32 puId,U32 * state)
+{
+	if (puList == NULL) {
+		puList = this->getPuList(&puCout);
+	}
+	if (puList == NULL) {
+		cout << CURRFILE" ERROR: Device doesn't have Programmable Units" << endl << endl;
+		return false;
+	}
+	err = BRD_puState(handle, puId, state);
+	if (err < 0) {
+		if(BRD_errcmp(err, BRDerr_BAD_ID)) {
+			cout << CURRFILE" ERROR: Incorrect puID" << endl << endl;
+		}
+		return false;
+	}
+	return true;
+}
+boolean			Radio::getPLDState(int * state)
+{
+	BRD_PuList	pld;
+	return this->getPLD(&pld) && this->getPuState(pld.puId,(U32*)state);
+}
+boolean			Radio::loadPLD(int * state)
+{
+	BRD_PuList pld;
+	this->getPLD(&pld);
+	if (BRD_errcmp(pld.puAttr, BRDpua_LOAD)) {
+		err	=	BRD_puLoad(handle, BRDpui_PLD, "PLD_HEX\\ad416s24.h40", (U32*)state);
+		if (err < 0) {
+			printf(CURRFILE" ERROR: $s", BRD_errcmp(err, BRDerr_BAD_FILE)?"Unnable to open HEX file": (BRD_errcmp(err, BRDerr_HW_ERROR)?"Hardware error":"Write error"));
+			return false;
+		}
+		return true;
+	}
+	else {
+		cout << CURRFILE" ERROR: There id not access for load hex" << endl << endl;
+		return false;
+	}
 }
