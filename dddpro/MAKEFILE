@@ -1,0 +1,56 @@
+#
+#  ======== makefile ========
+#
+
+#targets
+all: clean dddpro.dxe /
+
+#
+#  The following macros seldom require any changes
+#
+# stack call convention                      
+#CC  = ccts -TS101 -g -si-revision0.0 -align-branch-lines -default-branch-np
+CC  = ccts -TS101 -g -align-branch-lines -default-branch-np
+ASM = easmts -TS101 -g -align-branch-lines -default-branch-np
+LINK    = linker 
+ARCH    = lib21k
+LOADER  = elfloader
+SYSLNKS  = dzy101.ldf
+SYSLNKS2 = ADSP-TS101.ldf
+OBJS    =
+LIBPATH =
+
+
+.SUFFIXES:
+.SUFFIXES: .doj .asm .c .dxe
+
+#
+#  Rules ...
+#
+.c.doj:
+	$(CC) -c $*.c
+
+.asm.doj:
+	$(ASM) $*.asm
+
+#
+#  Targets ...
+#
+ts101_link.dxe : ts101_link.doj $(SYSLNKS2) makefile
+	$(LINK) -T $(SYSLNKS2) $*.doj -o $*.dxe
+
+dddpro.dxe : dddpro.doj drvcfg.doj $(SYSLNKS) makefile
+	$(LINK) -T $(SYSLNKS) $*.doj drvcfg.doj -o ../debug/$*.dxe
+
+dddpro.ldr : dddpro.dxe ts101_link.dxe $(SYSLNKS) makefile
+	$(LOADER) $*.dxe -dADSP-TS101 -l ts101_link.dxe  -v -blink -fascii -o $*.ldr
+
+clean:
+	rm -f ../debug/*.dxe *.doj *.ldr
+
+#
+#  ======== ~makefile ========
+#
+
+
+

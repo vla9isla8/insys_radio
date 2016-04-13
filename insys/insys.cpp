@@ -71,7 +71,11 @@ int main()
 			return 0;
 		}
 	}
-	//TODO.
+	if (radio.loadDSPProgram()) {
+		radio.startDSPProgram();
+		system("pause");
+		radio.stopDSPProgram();
+	}	
 	radio.closeDevice();
 	system("pause");
     return 0;

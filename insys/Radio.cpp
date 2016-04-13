@@ -1,7 +1,7 @@
 #include		"stdafx.h"
 				Radio::Radio()
 {
-	BRD_displayMode(BRDdm_VISIBLE);
+	BRD_displayMode(BRDdm_ERROR);
 }
 				Radio::~Radio()
 {
@@ -149,12 +149,6 @@ int				Radio::displayDevices()
 	cout << endl << endl;
 	return deviceList.size();
 }
-boolean			Radio::loadDSPProgramm(char * fileName)
-{
-	BRD_load(handle, g_nodeId, fileName, 0, NULL);
-	BRD_start(handle, g_nodeId);
-	return boolean();
-}
 boolean			Radio::getPLD(BRD_PuList * pld)
 {
 	int ii;
@@ -205,9 +199,13 @@ boolean			Radio::loadPLD(int * state)
 	BRD_PuList pld;
 	this->getPLD(&pld);
 	if (BRD_errcmp(pld.puAttr, BRDpua_LOAD)) {
-		err	=	BRD_puLoad(handle, BRDpui_PLD, "PLD_HEX\\ad416s24.h40", (U32*)state);
+		err	=	BRD_puLoad(handle, BRDpui_PLD, g_PLD_path, (U32*)state);
 		if (err < 0) {
-			printf(CURRFILE" ERROR: $s", BRD_errcmp(err, BRDerr_BAD_FILE)?"Unnable to open HEX file": (BRD_errcmp(err, BRDerr_HW_ERROR)?"Hardware error":"Write error"));
+			printf(CURRFILE" ERROR: %s", (
+				BRD_errcmp(err, BRDerr_BAD_FILE)?"Unnable to open HEX file": (
+					BRD_errcmp(err, BRDerr_HW_ERROR)?"Hardware error":"Write error")
+				)
+			);
 			return false;
 		}
 		return true;
@@ -216,4 +214,33 @@ boolean			Radio::loadPLD(int * state)
 		cout << CURRFILE" ERROR: There id not access for load hex" << endl << endl;
 		return false;
 	}
+}
+boolean			Radio::loadDSPProgram() 
+{
+	err = BRD_load(handle, g_nodeId, g_dsp_program_path, 0, NULL);
+	if (err < 0) {
+		printf(CURRFILE" ERROR: %s", (
+			BRD_errcmp(err, BRDerr_BAD_FILE) ? "Unnable to open DXE file \n" : "Write error\n")
+			);
+		return false;
+	}
+}
+boolean			Radio::startDSPProgram() 
+{
+	err = BRD_start(handle, g_nodeId);
+	if (err < 0) {
+		cout << CURRFILE" ERROR: Unnable to start programm" << endl;
+		return false;
+	}
+	return true;
+}
+
+boolean Radio::stopDSPProgram()
+{
+	err = BRD_stop(handle, g_nodeId);
+	if (err < 0) {
+		cout << CURRFILE" ERROR: Unnable to start programm" << endl;
+		return false;
+	}
+	return true;
 }

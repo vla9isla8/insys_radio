@@ -19,10 +19,10 @@ class	Radio
 	char		boardname[128]	=	"ADP101PCI";
 	BRD_Handle	handle	=	-1;
 	BRD_Info	info = { sizeof(info) };
+	char*		g_PLD_path			= "PLD_HEX\\ad416s24.h40";
+	char*		g_dsp_program_path	= "dddpro.dxe";
 	U32			
 		openMode,
-		g_autoinit	= 0, 
-		g_isQuiet	= 0, 
 		g_nodeId	= NODE0;	
 public:
 	Radio();
@@ -37,7 +37,9 @@ public:
 	BRD_PuList *	getPuList(U32 * item);
 	int				displayPuList();
 	int				displayDevices();
-	boolean			loadDSPProgramm(char* fileName);
+	boolean			loadDSPProgram();
+	boolean			startDSPProgram();
+	boolean			stopDSPProgram();
 	boolean			getPLD(BRD_PuList * pld);
 	boolean			getPuState(U32 puId, U32 * state);
 	boolean			getPLDState(int * state);
